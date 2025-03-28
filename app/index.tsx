@@ -5,7 +5,7 @@ import Library from "./library";
 export default function Index() {
   return (
     <View style={styles.container}>
-      <StatusBar style="light" translucent />
+      <StatusBar style="light" translucent backgroundColor="black" />
       <Library />
     </View>
   );
