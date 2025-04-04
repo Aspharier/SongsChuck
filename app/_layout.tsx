@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { View, StyleSheet } from "react-native";
 import Library from "./library";
+import "expo-dev-client";
 
 const Stack = createNativeStackNavigator();
 
