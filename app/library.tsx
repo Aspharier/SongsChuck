@@ -1,200 +1,130 @@
-import { Text, View, StyleSheet, TouchableOpacity, Image } from "react-native";
+import { Image, Text, View, StyleSheet, TouchableOpacity } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
+import * as MediaLibrary from "expo-media-library";
+import { useQuery } from "@tanstack/react-query";
+import {
+  MetadataPresets,
+  getMetadata,
+} from "@missingcore/react-native-metadata-retriever";
+import { useEffect, useState } from "react";
+import { isFulfilled, isRejected } from "./utils/promise";
 
-const DATA = [
-  {
-    id: "1",
-    title: "03 am in 6ix",
-    artist: "JJ47/Jokhay - Talk To You Later",
-    duration: "2:58",
-    type: "mp3",
-    albumImage: require("../assets/images/1.png"),
-  },
-  {
-    id: "2",
-    title: "051021",
-    artist: "Shamoon Ismail/Talha Anjum - Scars & Screws",
-    duration: "3:32",
-    type: "mp3",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "3",
-    title: "100 Bars",
-    artist: "Talha Anjum - 100 Bars",
-    duration: "6:08",
-    type: "mp3",
-    albumImage: require("../assets/images/sample4.png"),
-  },
-  {
-    id: "4",
-    title: "100 Million",
-    artist: "DIVINE/Karan Aujia - 100 Million",
-    duration: "3:13",
-    type: "mp3",
-    albumImage: require("../assets/images/1.png"),
-  },
-  {
-    id: "5",
-    title: "101",
-    artist: "Seedhe Maut - 101",
-    duration: "3:17",
-    type: "mp3",
-    albumImage: require("../assets/images/sample4.png"),
-  },
-  {
-    id: "7",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "8",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "9",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "10",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "11",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "12",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "13",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "14",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "15",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "16",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "17",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "18",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "19",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "20",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "21",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "22",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "23",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "24",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-  {
-    id: "25",
-    title: "Rootho Na",
-    artist: "Akanksha Bhandari/Raghav Kaushik - Rootho Na",
-    albumImage: require("../assets/images/sample3.png"),
-  },
-];
+async function getTracks() {
+  const start = performance.now();
 
-type ItemProps = {
-  title: string;
-  artist: string;
-  albumImage?: number;
-};
+  const { totalCount } = await MediaLibrary.getAssetsAsync({
+    mediaType: "audio",
+    first: 0,
+  });
+  let audioFiles = (
+    await MediaLibrary.getAssetsAsync({
+      mediaType: "audio",
+      first: totalCount,
+    })
+  ).assets.filter((a) =>
+    a.uri.startsWith("file:///storage/emulated/0/Download/"),
+  );
+  console.log(
+    `Got list of audio files in ${((performance.now() - start) / 1000).toFixed(4)}s.`,
+  );
 
-const Item = ({ title, artist, albumImage }: ItemProps) => (
-  <TouchableOpacity style={styles.item}>
-    <View style={styles.songContent}>
-      <Image source={albumImage} style={styles.albumCover} />
-      <View style={styles.textContainer}>
-        <Text style={styles.songTitle}>{title}</Text>
-        <Text style={styles.songArtist}>{artist}</Text>
-      </View>
-    </View>
-  </TouchableOpacity>
-);
+  const tracksMetadata = await Promise.allSettled(
+    audioFiles.map(async ({ id, filename, uri }) => {
+      const data = await getMetadata(uri, MetadataPresets.standardArtwork);
+      return { id, filename, ...data };
+    }),
+  );
+  console.log(
+    `Got metadata of ${audioFiles.length} tracks in ${((performance.now() - start) / 1000).toFixed(4)}s.`,
+  );
+
+  const errors = tracksMetadata.filter(isRejected).map(({ reason }) => reason);
+  console.log("Errors:", errors);
+
+  return {
+    duration: ((performance.now() - start) / 1000).toFixed(4),
+    tracks: tracksMetadata.filter(isFulfilled).map(({ value }) => value),
+  };
+}
 
 const Library = () => {
+  const [permissionResponse, requestPermission] = MediaLibrary.usePermissions({
+    granularPermissions: ["audio"],
+  });
+  const [hasPermissions, setHasPermissions] = useState(false);
+
+  const { isPending, error, data } = useQuery({
+    queryKey: ["tracks"],
+    queryFn: getTracks,
+    enabled: hasPermissions,
+  });
+
+  useEffect(() => {
+    async function checkPermissions() {
+      if (permissionResponse?.status !== "granted") {
+        const { canAskAgain, status } = await requestPermission();
+        if (canAskAgain || status === "denied") return;
+      } else {
+        setHasPermissions(true);
+      }
+    }
+    checkPermissions();
+  }, [permissionResponse?.status, requestPermission]);
+
+  if (isPending) {
+    return <Text style={styles.headerTitle}>Loading tracks...</Text>;
+  } else if (error) {
+    return (
+      <>
+        <Text style={styles.headerTitle}>An error was encountered:</Text>
+        <Text style={styles.songContent}>{error.message}</Text>
+      </>
+    );
+  } else if (!hasPermissions) {
+    return (
+      <Text style={styles.headerTitle}>
+        Read permissions for media content was not granted.
+      </Text>
+    );
+  }
+
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>All Songs</Text>
-        </View>
+      <SafeAreaView style={styles.container} edges={["top"]}>
         <FlashList
-          data={DATA}
+          data={data?.tracks || []}
+          ListHeaderComponent={
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>All Songs</Text>
+              <Text style={styles.songCount}>{data.tracks.length}</Text>
+            </View>
+          }
           renderItem={({ item }) => (
-            <Item
-              title={item.title}
-              artist={item.artist}
-              albumImage={item.albumImage}
-            />
+            <TouchableOpacity style={styles.item}>
+              <View style={styles.songContent}>
+                {item.artworkData ? (
+                  <Image
+                    source={{ uri: item.artworkData }}
+                    style={styles.albumCover}
+                  />
+                ) : (
+                  <View style={styles.albumCoverPlaceholder} />
+                )}
+                <View style={styles.textContainer}>
+                  <Text style={styles.songTitle} numberOfLines={1}>
+                    {item.title || item.filename}
+                  </Text>
+                  <Text style={styles.songArtist} numberOfLines={1}>
+                    {item.artist || "Unknown Artist"}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
           )}
-          keyExtractor={(item) => item.id}
+          keyExtractor={({ id }) => id}
           estimatedItemSize={80}
+          contentContainerStyle={styles.listContent}
         />
       </SafeAreaView>
     </SafeAreaProvider>
@@ -208,54 +138,72 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "black",
   },
+  listContent: {
+    paddingTop: 0,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    padding: 20,
+    paddingTop: 10,
+    paddingBottom: 10,
+    backgroundColor: "black",
   },
   headerTitle: {
     fontSize: 30,
     fontWeight: "bold",
     color: "white",
   },
-  divider: {
-    height: 1,
-    backgroundColor: "#333",
-    marginHorizontal: 16,
+  songCount: {
+    fontSize: 20,
+    color: "#888",
   },
   item: {
-    backgroundColor: "transparent",
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   songContent: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    marginRight: 15,
   },
   textContainer: {
     flex: 1,
+    marginLeft: 15,
   },
   albumCover: {
-    height: 80,
-    width: 80,
-    marginRight: 12,
+    height: 100,
+    width: 100,
     borderRadius: 10,
+  },
+  albumCoverPlaceholder: {
+    height: 100,
+    width: 100,
+    borderRadius: 10,
+    backgroundColor: "black",
   },
   songTitle: {
     fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 5,
+    fontWeight: "500",
     color: "white",
+    marginBottom: 10,
   },
   songArtist: {
-    fontSize: 15,
-    color: "#999",
+    fontSize: 14,
+    color: "#888",
+  },
+  songDuration: {
+    fontSize: 14,
+    color: "#888",
+    marginBottom: 3,
   },
   songType: {
-    fontSize: 14,
-    color: "#666",
+    fontSize: 12,
+    color: "#555",
   },
 });

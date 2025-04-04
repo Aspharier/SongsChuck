@@ -3,24 +3,31 @@ import { View, StyleSheet } from "react-native";
 import Library from "./library";
 import "expo-dev-client";
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
+
 const Stack = createNativeStackNavigator();
 
 export default function RootLayout() {
+  const [queryClient] = useState(() => new QueryClient());
+
   return (
-    <View style={styles.container}>
-      <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-          contentStyle: {
-            backgroundColor: "black",
-          },
-          statusBarStyle: "light",
-          statusBarBackgroundColor: "black",
-        }}
-      >
-        <Stack.Screen name="Library" component={Library} />
-      </Stack.Navigator>
-    </View>
+    <QueryClientProvider client={queryClient}>
+      <View style={styles.container}>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            contentStyle: {
+              backgroundColor: "black",
+            },
+            statusBarStyle: "light",
+            statusBarBackgroundColor: "black",
+          }}
+        >
+          <Stack.Screen name="Library" component={Library} />
+        </Stack.Navigator>
+      </View>
+    </QueryClientProvider>
   );
 }
 
