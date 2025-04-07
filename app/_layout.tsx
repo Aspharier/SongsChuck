@@ -1,11 +1,14 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { View, StyleSheet } from "react-native";
 import Library from "./library";
+import PlayScreen from "./player";
+
 import "expo-dev-client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { AudioProvider } from "./audioProvider";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const Stack = createNativeStackNavigator();
 
@@ -14,22 +17,35 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AudioProvider>
-        <View style={styles.container}>
-          <Stack.Navigator
-            screenOptions={{
-              headerShown: false,
-              contentStyle: {
-                backgroundColor: "black",
-              },
-              statusBarStyle: "light",
-              statusBarBackgroundColor: "black",
-            }}
-          >
-            <Stack.Screen name="Library" component={Library} />
-          </Stack.Navigator>
-        </View>
-      </AudioProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <AudioProvider>
+          <View style={styles.container}>
+            <Stack.Navigator
+              screenOptions={{
+                headerShown: false,
+                contentStyle: {
+                  backgroundColor: "black",
+                },
+                statusBarStyle: "light",
+                statusBarBackgroundColor: "black",
+              }}
+            >
+              <Stack.Screen name="Library" component={Library} />
+              <Stack.Screen
+                component={PlayScreen}
+                name="player"
+                options={{
+                  presentation: "card",
+                  gestureEnabled: true,
+                  gestureDirection: "vertical",
+                  animation: "slide_from_bottom",
+                  headerShown: false,
+                }}
+              />
+            </Stack.Navigator>
+          </View>
+        </AudioProvider>
+      </GestureHandlerRootView>
     </QueryClientProvider>
   );
 }

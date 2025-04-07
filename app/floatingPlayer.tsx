@@ -1,15 +1,10 @@
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ViewProps,
-} from "react-native";
+import { View, TouchableOpacity, StyleSheet, ViewProps } from "react-native";
 import { Image } from "expo-image";
 import React from "react";
-import { Ionicons } from "@expo/vector-icons";
 import { useAudioPlayer } from "./audioProvider";
-import { FontAwesome, FontAwesome6 } from "@expo/vector-icons";
+import { FontAwesome6 } from "@expo/vector-icons";
+import { MovingText } from "./movingText";
+import { useRouter } from "expo-router";
 
 const unknownTrackImageUri = "../assets/images/sample3.png";
 
@@ -18,10 +13,10 @@ export const PlayPauseButton = ({ iconSize = 24 }: { iconSize?: number }) => {
 
   return (
     <TouchableOpacity onPress={pauseTrack}>
-      <FontAwesome
+      <FontAwesome6
         name={isPlaying ? "pause" : "play"}
         size={iconSize}
-        color="white"
+        color="#d8f3dc"
       />
     </TouchableOpacity>
   );
@@ -32,19 +27,23 @@ export const SkipToNextButton = ({ iconSize = 24 }: { iconSize?: number }) => {
 
   return (
     <TouchableOpacity onPress={playNextTrack}>
-      <FontAwesome6 name="forward" size={iconSize} color="white" />
+      <FontAwesome6 name="forward" size={iconSize} color="#d8f3dc" />
     </TouchableOpacity>
   );
 };
 
 export const FloatingPlayer = ({ style }: ViewProps) => {
+  const router = useRouter();
   const { currentTrack } = useAudioPlayer();
   if (!currentTrack) {
     return null;
   }
 
+  const handlePress = () => {
+    router.navigate("/player");
+  };
   return (
-    <View style={[styles.container, style]}>
+    <TouchableOpacity onPress={handlePress} style={[styles.container, style]}>
       <Image
         source={{
           uri: currentTrack.artworkData ?? unknownTrackImageUri,
@@ -52,16 +51,17 @@ export const FloatingPlayer = ({ style }: ViewProps) => {
         style={styles.trackArtworkImage}
       />
       <View style={styles.trackTitleContainer}>
-        <Text style={styles.trackTitle}>{currentTrack.title}</Text>
-        {currentTrack.artist && (
-          <Text style={styles.artistName}>{currentTrack.artist}</Text>
-        )}
+        <MovingText
+          style={styles.trackTitle}
+          animationThreshold={25}
+          text={currentTrack.title ?? ""}
+        />
       </View>
       <View style={styles.trackControlsContainer}>
         <PlayPauseButton iconSize={24} />
         <SkipToNextButton iconSize={24} />
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -84,12 +84,12 @@ const styles = StyleSheet.create({
   trackTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "white",
+    color: "#52b788",
     marginBottom: 5,
   },
   artistName: {
     fontSize: 14,
-    color: "#666",
+    color: "#d8f3dc",
   },
   trackControlsContainer: {
     flexDirection: "row",

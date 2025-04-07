@@ -19,8 +19,8 @@ export const styles = StyleSheet.create({
     elevation: 2,
     position: "absolute",
     bottom: 20,
-    left: 20,
-    right: 20,
+    left: 15,
+    right: 15,
   },
   header: {
     flexDirection: "row",
@@ -33,7 +33,7 @@ export const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 30,
     fontWeight: "bold",
-    color: "white",
+    color: "#d8f3dc",
   },
   songCount: {
     fontSize: 20,
