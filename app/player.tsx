@@ -12,60 +12,59 @@ const unknownTrackImageUri = "../assets/images/sample3.png";
 const PlayScreen = () => {
   const { top, bottom } = useSafeAreaInsets();
   const { currentTrack } = useAudioPlayer();
+
   if (!currentTrack) {
     return (
-      <View style={{ justifyContent: "center", flex: 1 }}>
-        <ActivityIndicator color={styles.icon.color} />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator color="#fff" size="large" />
       </View>
     );
   }
+
   return (
-    <View style={styles.overlayContainer}>
+    <View style={styles.container}>
       <DismissPlayerSymbol />
-      <View style={{ flex: 1, marginTop: top + 70, marginBottom: bottom }}>
-        <View style={styles.artworkImageContainer}>
+
+      <View
+        style={[
+          styles.contentContainer,
+          { marginTop: top + 40, marginBottom: bottom },
+        ]}
+      >
+        {/* Album Artwork */}
+        <View style={styles.artworkContainer}>
           <Image
-            source={{
-              uri: currentTrack.artworkData ?? unknownTrackImageUri,
-            }}
+            source={{ uri: currentTrack.artworkData ?? unknownTrackImageUri }}
             style={styles.artworkImage}
           />
         </View>
-        <View style={{ marginTop: "auto" }}>
-          <View style={{ height: 60 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              {/* Track Title */}
-              <View style={styles.trackTitleContainer}>
-                <MovingText
-                  text={currentTrack.title ?? ""}
-                  animationThreshold={30}
-                  style={styles.trackTitleText}
-                />
-              </View>
-              {/* Track artist */}
-              {currentTrack.artist && (
-                <Text numberOfLines={1} style={styles.trackArtistText}>
-                  {currentTrack.artist}
-                </Text>
-              )}
+
+        {/* Track Info */}
+        <View style={styles.trackInfoContainer}>
+          <View style={styles.trackTextContainer}>
+            <View style={styles.trackTitleContainer}>
+              <MovingText
+                text={currentTrack.title ?? ""}
+                animationThreshold={30}
+                style={styles.trackTitleText}
+              />
             </View>
-            <PlayerProgressBar style={{ marginTop: 32 }} />
-            <PlayerControls style={{ marginTop: 40 }} />
+            {currentTrack.artist && (
+              <Text numberOfLines={1} style={styles.trackArtistText}>
+                {currentTrack.artist}
+              </Text>
+            )}
           </View>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <PlayerRepeatToggle size={30} style={{ marginBottom: 6 }} />
+
+          {/* Progress Bar */}
+          <PlayerProgressBar style={styles.progressBar} />
+
+          {/* Controls */}
+          <PlayerControls style={styles.controls} />
+
+          {/* Repeat Toggle */}
+          <View style={styles.repeatContainer}>
+            <PlayerRepeatToggle size={28} />
           </View>
         </View>
       </View>
@@ -74,71 +73,88 @@ const PlayScreen = () => {
 };
 
 const DismissPlayerSymbol = () => {
-  const { top } = useSafeAreaInsets();
   return (
-    <View
-      style={{
-        position: "absolute",
-        top: top + 8,
-        left: 0,
-        right: 0,
-        flexDirection: "row",
-        justifyContent: "center",
-      }}
-    >
-      <View
-        accessible={false}
-        style={{
-          width: 50,
-          height: 8,
-          borderRadius: 8,
-          backgroundColor: "white",
-          opacity: 0.7,
-        }}
-      ></View>
+    <View style={styles.dismissSymbolContainer}>
+      <View style={styles.dismissSymbol} />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  overlayContainer: {
+  container: {
     flex: 1,
-    paddingHorizontal: 16,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 24,
+    backgroundColor: "rgba(0,0,0,0.9)",
   },
-  icon: { color: "#fff" },
-  artworkImageContainer: {
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.44,
-    shadowRadius: 11.0,
-    flexDirection: "row",
+  loadingContainer: {
+    flex: 1,
     justifyContent: "center",
-    height: "45%",
+    alignItems: "center",
+    backgroundColor: "#000",
+  },
+  contentContainer: {
+    flex: 1,
+  },
+  dismissSymbolContainer: {
+    position: "absolute",
+    top: 20,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    zIndex: 10,
+  },
+  dismissSymbol: {
+    width: 50,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.7)",
+  },
+  artworkContainer: {
+    flex: 0.6,
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
   },
   artworkImage: {
     width: "100%",
-    height: "100%",
-    resizeMode: "cover",
+    aspectRatio: 1,
     borderRadius: 12,
   },
+  trackInfoContainer: {
+    flex: 0.4,
+    justifyContent: "flex-end",
+    paddingBottom: 20,
+  },
+  trackTextContainer: {
+    marginBottom: 30,
+  },
   trackTitleContainer: {
-    flex: 1,
-    overflow: "hidden",
+    marginBottom: 8,
   },
   trackTitleText: {
     color: "#fff",
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "700",
+    textAlign: "center",
   },
   trackArtistText: {
-    marginTop: 8,
-    color: "#fff",
-    fontSize: 20,
-    opacity: 0.8,
-    maxWidth: "90%",
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 18,
+    textAlign: "center",
+    fontWeight: "500",
+  },
+  progressBar: {
+    marginBottom: 30,
+  },
+  controls: {
+    marginBottom: 20,
+  },
+  repeatContainer: {
+    alignItems: "center",
+    marginTop: 10,
   },
 });
+
 export default PlayScreen;

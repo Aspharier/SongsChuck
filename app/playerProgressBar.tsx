@@ -1,10 +1,18 @@
 import { StyleSheet, Text, View, ViewProps } from "react-native";
 import { Slider } from "react-native-awesome-slider";
-import { useSharedValue } from "react-native-reanimated";
+import {
+  useSharedValue,
+  configureReanimatedLogger,
+  ReanimatedLogLevel,
+} from "react-native-reanimated";
 import { useAudioPlayer } from "./audioProvider";
 import { formatSecondsToMinutes } from "./miscellaneous";
 import { colors, fontSize } from "./token";
 
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false,
+});
 export const PlayerProgressBar = ({ style }: ViewProps) => {
   const { position, duration, seekTo, isPlaying } = useAudioPlayer();
 
