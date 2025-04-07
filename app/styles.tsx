@@ -10,8 +10,8 @@ export const styles = StyleSheet.create({
   },
   floatingPlayerStyles: {
     backgroundColor: "#252525",
-    padding: 25,
-    borderRadius: 8,
+    padding: 15,
+    borderRadius: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -19,8 +19,8 @@ export const styles = StyleSheet.create({
     elevation: 2,
     position: "absolute",
     bottom: 20,
-    left: 15,
-    right: 15,
+    left: 20,
+    right: 20,
   },
   header: {
     flexDirection: "row",

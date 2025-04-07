@@ -1,23 +1,25 @@
-import React, { useState, useEffect } from "react";
-import { Audio } from "expo-av";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Audio, AVPlaybackStatus } from "expo-av";
 import { Track } from "./types";
 
-export const AudioContext = React.createContext<{
+interface AudioContextType {
   currentTrack: Track | null;
   isPlaying: boolean;
-  playbackInstance: Audio.Sound | null;
   playTrack: (track: Track) => Promise<void>;
   pauseTrack: () => Promise<void>;
   playNextTrack: () => Promise<void>;
   setPlaylist: (tracks: Track[]) => void;
-}>({
+  isLoading: boolean;
+}
+
+export const AudioContext = React.createContext<AudioContextType>({
   currentTrack: null,
   isPlaying: false,
-  playbackInstance: null,
   playTrack: async () => {},
   pauseTrack: async () => {},
   playNextTrack: async () => {},
   setPlaylist: () => {},
+  isLoading: false,
 });
 
 export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -25,10 +27,10 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackInstance, setPlaybackInstance] = useState<Audio.Sound | null>(
-    null,
-  );
   const [playlist, setPlaylist] = useState<Track[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const playbackInstance = useRef<Audio.Sound | null>(null);
+  const isMounted = useRef(true);
 
   useEffect(() => {
     Audio.setAudioModeAsync({
@@ -38,77 +40,117 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     return () => {
-      if (playbackInstance) {
-        playbackInstance.unloadAsync();
-      }
+      isMounted.current = false;
+      unloadAudio();
     };
   }, []);
 
-  const playTrack = async (track: Track) => {
-    if (playbackInstance) {
-      await playbackInstance.unloadAsync();
-    }
-    if (!track.uri) {
-      console.log("Track URI is missing");
-      return;
-    }
-
+  const unloadAudio = useCallback(async () => {
     try {
-      if (playbackInstance) {
-        await playbackInstance.unloadAsync();
+      if (playbackInstance.current) {
+        await playbackInstance.current.stopAsync();
+        await playbackInstance.current.unloadAsync();
+        playbackInstance.current = null;
       }
-
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: track.uri },
-        { shouldPlay: true },
-        onPlaybackStatusUpdate,
-      );
-      setPlaybackInstance(sound);
-      setCurrentTrack(track);
-      setIsPlaying(true);
     } catch (error) {
-      console.error("Failed to load audio", error);
+      console.error("Unload error:", error);
     }
-  };
+  }, []);
 
-  const onPlaybackStatusUpdate = (status: any) => {
-    if (status.didJustFinish) {
-      playNextTrack();
-    }
-  };
+  const playNextTrack = useCallback(async () => {
+    if (!currentTrack || playlist.length === 0 || isLoading) return;
 
-  const pauseTrack = async () => {
-    if (!playbackInstance) return;
-    if (isPlaying) {
-      await playbackInstance.pauseAsync();
-      setIsPlaying(false);
-    } else {
-      await playbackInstance.playAsync();
-      setIsPlaying(true);
-    }
-  };
-
-  const playNextTrack = async () => {
-    if (!currentTrack || playlist.length === 0) return;
-
-    const currentIndex = playlist.findIndex(
-      (track) => track.id === currentTrack.id,
-    );
+    const currentIndex = playlist.findIndex((t) => t.id === currentTrack.id);
     if (currentIndex < playlist.length - 1) {
       await playTrack(playlist[currentIndex + 1]);
+    } else {
+      await unloadAudio();
+      setCurrentTrack(null);
+      setIsPlaying(false);
     }
-  };
+  }, [currentTrack, playlist, isLoading, unloadAudio]);
+
+  const handlePlaybackStatusUpdate = useCallback(
+    (status: AVPlaybackStatus) => {
+      if (!status.isLoaded) {
+        return;
+      }
+
+      if (status.didJustFinish && isMounted.current) {
+        playNextTrack();
+      }
+    },
+    [playNextTrack],
+  );
+
+  const playTrack = useCallback(
+    async (track: Track) => {
+      if (!isMounted.current || isLoading) return;
+
+      setIsLoading(true);
+      console.log(`Attempting to play: ${track.title}`);
+
+      try {
+        await unloadAudio();
+
+        if (!track.uri) {
+          throw new Error("Track URI is missing");
+        }
+
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: track.uri },
+          { shouldPlay: true },
+          handlePlaybackStatusUpdate,
+        );
+
+        playbackInstance.current = sound;
+        if (isMounted.current) {
+          setCurrentTrack(track);
+          setIsPlaying(true);
+          console.log(`Now playing: ${track.title}`);
+        }
+      } catch (error) {
+        console.error("Playback error:", error);
+        if (isMounted.current) {
+          setCurrentTrack(null);
+          setIsPlaying(false);
+        }
+        await unloadAudio();
+      } finally {
+        if (isMounted.current) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [isLoading, unloadAudio, handlePlaybackStatusUpdate],
+  );
+
+  const pauseTrack = useCallback(async () => {
+    if (!playbackInstance.current || isLoading) return;
+
+    try {
+      if (isPlaying) {
+        await playbackInstance.current.pauseAsync();
+        setIsPlaying(false);
+      } else {
+        await playbackInstance.current.playAsync();
+        setIsPlaying(true);
+      }
+    } catch (error) {
+      console.error("Pause error:", error);
+    }
+  }, [isPlaying, isLoading]);
 
   return (
     <AudioContext.Provider
       value={{
         currentTrack,
         isPlaying,
-        playbackInstance,
         playTrack,
         pauseTrack,
         playNextTrack,
         setPlaylist,
+        isLoading,
       }}
     >
       {children}
@@ -116,4 +158,5 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
-export const useAudioPlayer = () => React.useContext(AudioContext);
+export const useAudioPlayer = (): AudioContextType =>
+  React.useContext(AudioContext);
