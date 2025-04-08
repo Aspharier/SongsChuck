@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Text, View, RefreshControl } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { Track } from "./types";
 import { getTracks, clearTrackCache } from "./trackService";
@@ -67,39 +67,37 @@ const Library: React.FC = () => {
   }
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.container} edges={[]}>
-        <FlashList
-          data={data?.tracks || []}
-          ListHeaderComponent={
-            <View style={styles.header}>
-              <Text style={styles.headerTitle}>All Songs</Text>
-              <Text style={styles.songCount}>{data?.tracks?.length || 0}</Text>
-            </View>
-          }
-          renderItem={({ item }) => (
-            <TrackItem item={item} onPress={() => handleTrackSelect(item)} />
-          )}
-          keyExtractor={({ id }) => id}
-          estimatedItemSize={120}
-          contentContainerStyle={{
-            ...styles.listContent,
-            paddingBottom: 80,
-          }}
-          ref={ref}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor="black"
-              colors={["black"]}
-            />
-          }
-          removeClippedSubviews={true}
-        />
-        <FloatingPlayer style={styles.floatingPlayerStyles} />
-      </SafeAreaView>
-    </SafeAreaProvider>
+    <SafeAreaView style={styles.container} edges={[]}>
+      <FlashList
+        data={data?.tracks || []}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>All Songs</Text>
+            <Text style={styles.songCount}>{data?.tracks?.length || 0}</Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <TrackItem item={item} onPress={() => handleTrackSelect(item)} />
+        )}
+        keyExtractor={({ id }) => id}
+        estimatedItemSize={120}
+        contentContainerStyle={{
+          ...styles.listContent,
+          paddingBottom: 80,
+        }}
+        ref={ref}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="black"
+            colors={["black"]}
+          />
+        }
+        removeClippedSubviews={true}
+      />
+      <FloatingPlayer style={styles.floatingPlayerStyles} />
+    </SafeAreaView>
   );
 };
 

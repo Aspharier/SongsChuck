@@ -1,15 +1,20 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  createContext,
+} from "react";
 import { Audio } from "expo-av";
 import { Track } from "./types";
 
-// Add repeat mode enum at the top
 export enum RepeatMode {
   Off = "OFF",
   Track = "TRACK",
   Queue = "QUEUE",
 }
 
-export const AudioContext = React.createContext<{
+export const AudioContext = createContext<{
   currentTrack: Track | null;
   isPlaying: boolean;
   playbackInstance: Audio.Sound | null;
@@ -51,6 +56,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const [duration, setDuration] = useState(0);
   const [playlist, setPlaylist] = useState<Track[]>([]);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>(RepeatMode.Off);
+
   const isMounted = useRef(true);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
 
@@ -77,69 +83,50 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
 
     return () => {
       isMounted.current = false;
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
-      }
-      if (playbackInstance) {
-        playbackInstance.unloadAsync();
-      }
+      if (progressInterval.current) clearInterval(progressInterval.current);
+      if (playbackInstance) playbackInstance.unloadAsync();
     };
   }, []);
 
   useEffect(() => {
     if (isPlaying) {
       progressInterval.current = setInterval(updateProgress, 250);
-    } else if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-      progressInterval.current = null;
+    } else {
+      if (progressInterval.current) {
+        clearInterval(progressInterval.current);
+        progressInterval.current = null;
+      }
     }
 
     return () => {
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
-      }
+      if (progressInterval.current) clearInterval(progressInterval.current);
     };
   }, [isPlaying, updateProgress]);
 
-  const handleTrackEnd = useCallback(async () => {
-    if (repeatMode === RepeatMode.Track && currentTrack) {
-      // Replay the current track
-      await seekTo(0);
-      await playbackInstance?.playAsync();
-    } else if (repeatMode === RepeatMode.Queue) {
-      // Move to next track or loop to first track
-      const currentIndex = playlist.findIndex((t) => t.id === currentTrack?.id);
-      if (currentIndex === playlist.length - 1) {
-        await playTrack(playlist[0]);
-      } else {
-        await playNextTrack();
+  const seekTo = useCallback(
+    async (position: number) => {
+      if (!playbackInstance) return;
+
+      try {
+        await playbackInstance.setPositionAsync(position);
+        setPosition(position);
+      } catch (error) {
+        console.error("Seek error:", error);
       }
-    } else {
-      // Default behavior (RepeatMode.Off)
-      await playNextTrack();
-    }
-  }, [
-    currentTrack,
-    playlist,
-    repeatMode,
-    playTrack,
-    playNextTrack,
-    seekTo,
-    playbackInstance,
-  ]);
+    },
+    [playbackInstance],
+  );
 
   const playTrack = useCallback(
     async (track: Track) => {
       if (!isMounted.current) return;
 
       try {
-        // Clear any existing interval
         if (progressInterval.current) {
           clearInterval(progressInterval.current);
           progressInterval.current = null;
         }
 
-        // Unload previous track if exists
         if (playbackInstance) {
           await playbackInstance.unloadAsync();
         }
@@ -159,7 +146,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
           },
         );
 
-        // Get initial duration
         const status = await sound.getStatusAsync();
         if (status.isLoaded) {
           setDuration(status.durationMillis || 0);
@@ -171,36 +157,6 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         setIsPlaying(true);
       } catch (error) {
         console.error("Failed to load audio", error);
-      }
-    },
-    [playbackInstance, handleTrackEnd],
-  );
-
-  const pauseTrack = useCallback(async () => {
-    if (!playbackInstance) return;
-
-    try {
-      if (isPlaying) {
-        await playbackInstance.pauseAsync();
-        setIsPlaying(false);
-      } else {
-        await playbackInstance.playAsync();
-        setIsPlaying(true);
-      }
-    } catch (error) {
-      console.error("Pause error:", error);
-    }
-  }, [playbackInstance, isPlaying]);
-
-  const seekTo = useCallback(
-    async (position: number) => {
-      if (!playbackInstance) return;
-
-      try {
-        await playbackInstance.setPositionAsync(position);
-        setPosition(position);
-      } catch (error) {
-        console.error("Seek error:", error);
       }
     },
     [playbackInstance],
@@ -220,7 +176,47 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsPlaying(false);
       setPosition(0);
     }
-  }, [currentTrack, playlist, playTrack]);
+  }, [currentTrack, playlist, playTrack, playbackInstance]);
+
+  const handleTrackEnd = useCallback(async () => {
+    if (repeatMode === RepeatMode.Track && currentTrack) {
+      await seekTo(0);
+      await playbackInstance?.playAsync();
+    } else if (repeatMode === RepeatMode.Queue) {
+      const currentIndex = playlist.findIndex((t) => t.id === currentTrack?.id);
+      if (currentIndex === playlist.length - 1) {
+        await playTrack(playlist[0]);
+      } else {
+        await playNextTrack();
+      }
+    } else {
+      await playNextTrack();
+    }
+  }, [
+    currentTrack,
+    playlist,
+    repeatMode,
+    playTrack,
+    playNextTrack,
+    seekTo,
+    playbackInstance,
+  ]);
+
+  const pauseTrack = useCallback(async () => {
+    if (!playbackInstance) return;
+
+    try {
+      if (isPlaying) {
+        await playbackInstance.pauseAsync();
+        setIsPlaying(false);
+      } else {
+        await playbackInstance.playAsync();
+        setIsPlaying(true);
+      }
+    } catch (error) {
+      console.error("Pause error:", error);
+    }
+  }, [playbackInstance, isPlaying]);
 
   const playPreviousTrack = useCallback(async () => {
     if (!currentTrack || playlist.length === 0) return;

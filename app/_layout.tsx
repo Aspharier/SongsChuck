@@ -2,7 +2,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { View, StyleSheet } from "react-native";
 import Library from "./library";
 import PlayScreen from "./player";
-
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import "expo-dev-client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -18,33 +18,35 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <AudioProvider>
-          <View style={styles.container}>
-            <Stack.Navigator
-              screenOptions={{
-                headerShown: false,
-                contentStyle: {
-                  backgroundColor: "black",
-                },
-                statusBarStyle: "light",
-                statusBarBackgroundColor: "black",
-              }}
-            >
-              <Stack.Screen name="Library" component={Library} />
-              <Stack.Screen
-                component={PlayScreen}
-                name="player"
-                options={{
-                  presentation: "card",
-                  gestureEnabled: true,
-                  gestureDirection: "vertical",
-                  animation: "slide_from_bottom",
+        <SafeAreaProvider>
+          <AudioProvider>
+            <View style={styles.container}>
+              <Stack.Navigator
+                screenOptions={{
                   headerShown: false,
+                  contentStyle: {
+                    backgroundColor: "black",
+                  },
+                  statusBarStyle: "light",
+                  statusBarBackgroundColor: "black",
                 }}
-              />
-            </Stack.Navigator>
-          </View>
-        </AudioProvider>
+              >
+                <Stack.Screen name="Library" component={Library} />
+                <Stack.Screen
+                  component={PlayScreen}
+                  name="player"
+                  options={{
+                    presentation: "transparentModal",
+                    gestureEnabled: true,
+                    gestureDirection: "vertical",
+                    animation: "fade",
+                    headerShown: false,
+                  }}
+                />
+              </Stack.Navigator>
+            </View>
+          </AudioProvider>
+        </SafeAreaProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
   );

@@ -6,72 +6,151 @@ import { MovingText } from "./movingText";
 import { PlayerControls } from "./playerControls";
 import { PlayerProgressBar } from "./playerProgressBar";
 import { PlayerRepeatToggle } from "./playerRepeatToggle";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  interpolate,
+  Extrapolation,
+  withTiming,
+  runOnJS,
+} from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { useNavigation } from "@react-navigation/native";
+import { usePlayerBackground } from "./usePlayerBackground";
+import { LinearGradient } from "expo-linear-gradient";
+import { colors } from "./token";
 
 const unknownTrackImageUri = "../assets/images/sample3.png";
 
 const PlayScreen = () => {
   const { top, bottom } = useSafeAreaInsets();
   const { currentTrack } = useAudioPlayer();
+  const navigation = useNavigation();
+  const translateY = useSharedValue(0);
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+  const { imageColors } = usePlayerBackground(
+    currentTrack?.artwork ?? unknownTrackImageUri,
+  );
+  const panGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      if (event.translationY > 0) {
+        translateY.value = event.translationY;
+        scale.value = interpolate(
+          event.translationY,
+          [0, 300],
+          [1, 0.8],
+          Extrapolation.CLAMP,
+        );
+        opacity.value = interpolate(
+          event.translationY,
+          [0, 300],
+          [1, 0.5],
+          Extrapolation.CLAMP,
+        );
+      }
+    })
+    .onEnd((event) => {
+      if (event.translationY > 150) {
+        translateY.value = withTiming(500, { duration: 150 });
+        opacity.value = withTiming(0, { duration: 150 }, (finished) => {
+          if (finished) {
+            runOnJS(navigation.goBack)();
+          }
+        });
+      } else {
+        translateY.value = withSpring(0, { damping: 20 });
+        scale.value = withSpring(1);
+        opacity.value = withSpring(1);
+      }
+    });
 
+  const animatedContainerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }, { scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  const animatedArtworkStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        scale: interpolate(
+          translateY.value,
+          [0, 300],
+          [1, 0.9],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+  }));
   if (!currentTrack) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator color="#fff" size="large" />
+        <ActivityIndicator color="white" size="large" />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <DismissPlayerSymbol />
+    <LinearGradient
+      style={{ flex: 1 }}
+      colors={
+        imageColors
+          ? [imageColors.background, imageColors.primary]
+          : [colors.background, colors.primary]
+      }
+    >
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={[styles.container, animatedContainerStyle]}>
+          <DismissPlayerSymbol />
 
-      <View
-        style={[
-          styles.contentContainer,
-          { marginTop: top + 40, marginBottom: bottom },
-        ]}
-      >
-        {/* Album Artwork */}
-        <View style={styles.artworkContainer}>
-          <Image
-            source={{ uri: currentTrack.artworkData ?? unknownTrackImageUri }}
-            style={styles.artworkImage}
-          />
-        </View>
-
-        {/* Track Info */}
-        <View style={styles.trackInfoContainer}>
-          <View style={styles.trackTextContainer}>
-            <View style={styles.trackTitleContainer}>
-              <MovingText
-                text={currentTrack.title ?? ""}
-                animationThreshold={30}
-                style={styles.trackTitleText}
+          <View
+            style={[
+              styles.contentContainer,
+              { marginTop: top + 40, marginBottom: bottom },
+            ]}
+          >
+            {/* Album Artwork with animated style */}
+            <Animated.View
+              style={[styles.artworkContainer, animatedArtworkStyle]}
+            >
+              <Image
+                source={{
+                  uri: currentTrack.artworkData ?? unknownTrackImageUri,
+                }}
+                style={styles.artworkImage}
               />
+            </Animated.View>
+
+            {/* Track Info */}
+            <View style={styles.trackInfoContainer}>
+              <View style={styles.trackTextContainer}>
+                <View style={styles.trackTitleContainer}>
+                  <MovingText
+                    text={currentTrack.title ?? ""}
+                    animationThreshold={30}
+                    style={styles.trackTitleText}
+                  />
+                </View>
+                {currentTrack.artist && (
+                  <Text numberOfLines={1} style={styles.trackArtistText}>
+                    {currentTrack.artist}
+                  </Text>
+                )}
+              </View>
+
+              <PlayerProgressBar style={styles.progressBar} />
+              <PlayerControls style={styles.controls} />
+              <View style={styles.repeatContainer}>
+                <PlayerRepeatToggle size={28} />
+              </View>
             </View>
-            {currentTrack.artist && (
-              <Text numberOfLines={1} style={styles.trackArtistText}>
-                {currentTrack.artist}
-              </Text>
-            )}
           </View>
-
-          {/* Progress Bar */}
-          <PlayerProgressBar style={styles.progressBar} />
-
-          {/* Controls */}
-          <PlayerControls style={styles.controls} />
-
-          {/* Repeat Toggle */}
-          <View style={styles.repeatContainer}>
-            <PlayerRepeatToggle size={28} />
-          </View>
-        </View>
-      </View>
-    </View>
+        </Animated.View>
+      </GestureDetector>
+    </LinearGradient>
   );
 };
-
 const DismissPlayerSymbol = () => {
   return (
     <View style={styles.dismissSymbolContainer}>
@@ -84,7 +163,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 24,
-    backgroundColor: "rgba(0,0,0,0.9)",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   loadingContainer: {
     flex: 1,
@@ -97,7 +176,7 @@ const styles = StyleSheet.create({
   },
   dismissSymbolContainer: {
     position: "absolute",
-    top: 20,
+    top: 10,
     left: 0,
     right: 0,
     alignItems: "center",
@@ -107,7 +186,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.7)",
+    backgroundColor: "white",
   },
   artworkContainer: {
     flex: 0.6,
