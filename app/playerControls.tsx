@@ -26,7 +26,7 @@ export const PlayerControls = ({ style }: PlayerControlsProps) => {
 
 export const PlayPauseButton = ({
   style,
-  iconSize = 48,
+  iconSize = 50,
 }: PlayerButtonProps) => {
   const { isPlaying, pauseTrack } = useAudioPlayer();
   return (
@@ -42,7 +42,7 @@ export const PlayPauseButton = ({
   );
 };
 
-export const SkipToNextButton = ({ iconSize = 30 }: PlayerButtonProps) => {
+export const SkipToNextButton = ({ iconSize = 40 }: PlayerButtonProps) => {
   const { playNextTrack } = useAudioPlayer();
   return (
     <TouchableOpacity activeOpacity={0.7} onPress={playNextTrack}>
@@ -51,7 +51,7 @@ export const SkipToNextButton = ({ iconSize = 30 }: PlayerButtonProps) => {
   );
 };
 
-export const SkipToPreviousButton = ({ iconSize = 30 }: PlayerButtonProps) => {
+export const SkipToPreviousButton = ({ iconSize = 40 }: PlayerButtonProps) => {
   const { playPreviousTrack } = useAudioPlayer();
   return (
     <TouchableOpacity activeOpacity={0.7} onPress={playPreviousTrack}>

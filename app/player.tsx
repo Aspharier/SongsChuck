@@ -1,4 +1,10 @@
-import { View, StyleSheet, ActivityIndicator, Text } from "react-native";
+import {
+  StatusBar,
+  View,
+  StyleSheet,
+  ActivityIndicator,
+  Text,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudioPlayer } from "./audioProvider";
 import { Image } from "expo-image";
@@ -19,9 +25,9 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useNavigation } from "@react-navigation/native";
 import { usePlayerBackground } from "./usePlayerBackground";
 import { LinearGradient } from "expo-linear-gradient";
-import { colors } from "./token";
+import { useEffect, useState } from "react";
 
-const unknownTrackImageUri = "../assets/images/sample3.png";
+const unknownTrackImageUri = require("../assets/images/sample3.png");
 
 const PlayScreen = () => {
   const { top, bottom } = useSafeAreaInsets();
@@ -30,9 +36,28 @@ const PlayScreen = () => {
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
-  const { imageColors } = usePlayerBackground(
-    currentTrack?.artwork ?? unknownTrackImageUri,
-  );
+
+  const [artworkUrl, setArtworkUrl] = useState("");
+
+  useEffect(() => {
+    if (
+      currentTrack?.artworkData &&
+      typeof currentTrack.artworkData === "string"
+    ) {
+      try {
+        new URL(currentTrack.artworkData);
+        setArtworkUrl(currentTrack.artworkData);
+      } catch (e) {
+        console.log("Invalid artwork URL, using local fallback");
+        setArtworkUrl("");
+      }
+    } else {
+      setArtworkUrl("");
+    }
+  }, [currentTrack]);
+
+  const { imageColors } = usePlayerBackground(artworkUrl);
+
   const panGesture = Gesture.Pan()
     .onUpdate((event) => {
       if (event.translationY > 0) {
@@ -83,6 +108,7 @@ const PlayScreen = () => {
       },
     ],
   }));
+
   if (!currentTrack) {
     return (
       <View style={styles.loadingContainer}>
@@ -91,19 +117,16 @@ const PlayScreen = () => {
     );
   }
 
+  const imageSource = artworkUrl ? { uri: artworkUrl } : unknownTrackImageUri;
+
   return (
     <LinearGradient
       style={{ flex: 1 }}
-      colors={
-        imageColors
-          ? [imageColors.background, imageColors.primary]
-          : [colors.background, colors.primary]
-      }
+      colors={[imageColors.background, imageColors.primary]}
     >
+      <StatusBar hidden={true} />
       <GestureDetector gesture={panGesture}>
         <Animated.View style={[styles.container, animatedContainerStyle]}>
-          <DismissPlayerSymbol />
-
           <View
             style={[
               styles.contentContainer,
@@ -115,10 +138,10 @@ const PlayScreen = () => {
               style={[styles.artworkContainer, animatedArtworkStyle]}
             >
               <Image
-                source={{
-                  uri: currentTrack.artworkData ?? unknownTrackImageUri,
-                }}
+                source={imageSource}
                 style={styles.artworkImage}
+                contentFit="cover"
+                transition={300}
               />
             </Animated.View>
 
@@ -127,7 +150,7 @@ const PlayScreen = () => {
               <View style={styles.trackTextContainer}>
                 <View style={styles.trackTitleContainer}>
                   <MovingText
-                    text={currentTrack.title ?? ""}
+                    text={currentTrack.title ?? "Unknown Track"}
                     animationThreshold={30}
                     style={styles.trackTitleText}
                   />
@@ -151,19 +174,13 @@ const PlayScreen = () => {
     </LinearGradient>
   );
 };
-const DismissPlayerSymbol = () => {
-  return (
-    <View style={styles.dismissSymbolContainer}>
-      <View style={styles.dismissSymbol} />
-    </View>
-  );
-};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 10,
     backgroundColor: "rgba(0,0,0,0.5)",
+    paddingTop: 0,
   },
   loadingContainer: {
     flex: 1,
@@ -174,23 +191,9 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
   },
-  dismissSymbolContainer: {
-    position: "absolute",
-    top: 10,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    zIndex: 10,
-  },
-  dismissSymbol: {
-    width: 50,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "white",
-  },
   artworkContainer: {
-    flex: 0.6,
-    justifyContent: "center",
+    flex: 1,
+    justifyContent: "flex-start",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.5,
@@ -210,18 +213,18 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   trackTitleContainer: {
-    marginBottom: 8,
+    marginBottom: 5,
   },
   trackTitleText: {
     color: "#fff",
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: "700",
-    textAlign: "center",
+    textAlign: "left",
   },
   trackArtistText: {
     color: "rgba(255,255,255,0.8)",
-    fontSize: 18,
-    textAlign: "center",
+    fontSize: 20,
+    textAlign: "left",
     fontWeight: "500",
   },
   progressBar: {

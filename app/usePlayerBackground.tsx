@@ -13,63 +13,99 @@ type ImageColorsResult = {
   platform: "android" | "ios" | "web";
   dominant?: string;
   vibrant?: string;
+  average?: string;
   muted?: string;
   darkMuted?: string;
+  lightMuted?: string;
+  darkVibrant?: string;
+  lightVibrant?: string;
   background?: string;
   primary?: string;
   secondary?: string;
   detail?: string;
 };
 
-export const usePlayerBackground = (imageUrl: string) => {
-  const [imageColors, setImageColors] = useState<PlayerBackgroundColors | null>(
-    null,
-  );
+const fallbackColors: PlayerBackgroundColors = {
+  background: themeColors.background,
+  primary: themeColors.primary,
+  secondary: themeColors.textMuted || themeColors.text,
+  detail: themeColors.text,
+};
 
-  const fallbackColors: PlayerBackgroundColors = {
-    background: themeColors.background,
-    primary: themeColors.primary,
-    secondary: themeColors.textMuted || themeColors.text,
-    detail: themeColors.text,
-  };
+export const usePlayerBackground = (imageUrl: string) => {
+  const [imageColors, setImageColors] =
+    useState<PlayerBackgroundColors>(fallbackColors);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+
+    if (isMounted) {
+      setImageColors(fallbackColors);
+    }
+
+    if (!imageUrl || typeof imageUrl !== "string" || imageUrl.trim() === "") {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchColors = async () => {
       try {
-        const result = (await getColors(imageUrl, {
+        const config = {
           fallback: themeColors.background,
           cache: true,
           key: imageUrl,
-        })) as ImageColorsResult;
-
-        const finalColors: PlayerBackgroundColors = {
-          background:
-            result.platform === "android"
-              ? result.dominant || fallbackColors.background
-              : result.background || fallbackColors.background,
-          primary:
-            result.platform === "android"
-              ? result.vibrant || fallbackColors.primary
-              : result.primary || fallbackColors.primary,
-          secondary:
-            result.platform === "android"
-              ? result.muted || fallbackColors.secondary
-              : result.secondary || fallbackColors.secondary,
-          detail:
-            result.platform === "android"
-              ? result.darkMuted || fallbackColors.detail
-              : result.detail || fallbackColors.detail,
         };
 
-        setImageColors(finalColors);
+        const result = (await getColors(imageUrl, config)) as ImageColorsResult;
+
+        if (!isMounted) return;
+
+        if (result.platform === "android") {
+          const finalColors: PlayerBackgroundColors = {
+            background:
+              result.dominant || result.average || fallbackColors.background,
+            primary:
+              result.vibrant || result.darkVibrant || fallbackColors.primary,
+            secondary:
+              result.muted || result.lightMuted || fallbackColors.secondary,
+            detail:
+              result.darkMuted || result.lightVibrant || fallbackColors.detail,
+          };
+          setImageColors(finalColors);
+        } else {
+          const finalColors: PlayerBackgroundColors = {
+            background: result.background || fallbackColors.background,
+            primary: result.primary || fallbackColors.primary,
+            secondary: result.secondary || fallbackColors.secondary,
+            detail: result.detail || fallbackColors.detail,
+          };
+          setImageColors(finalColors);
+        }
       } catch (error) {
         console.error("Error extracting colors:", error);
-        setImageColors(fallbackColors);
+
+        if (error instanceof Error) {
+          console.error("Error message:", error.message);
+          console.error("Error stack:", error.stack);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
-    fetchColors();
+    const timerId = setTimeout(() => {
+      fetchColors();
+    }, 100);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timerId);
+    };
   }, [imageUrl]);
 
-  return { imageColors };
+  return { imageColors, isLoading };
 };

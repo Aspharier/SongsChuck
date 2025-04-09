@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   slider: {
-    height: 7,
+    height: 10,
     borderRadius: 16,
   },
 });
