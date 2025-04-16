@@ -5,8 +5,7 @@ import { useAudioPlayer } from "./audioProvider";
 import { FontAwesome6 } from "@expo/vector-icons";
 import { MovingText } from "./movingText";
 import { useRouter } from "expo-router";
-
-const unknownTrackImageUri = "../assets/images/sample3.png";
+const unknownTrackImageUri = require("../assets/images/sample3.png");
 
 export const PlayPauseButton = ({ iconSize = 24 }: { iconSize?: number }) => {
   const { isPlaying, pauseTrack } = useAudioPlayer();

@@ -27,8 +27,6 @@ import { usePlayerBackground } from "./usePlayerBackground";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 
-const unknownTrackImageUri = require("../assets/images/sample3.png");
-
 const PlayScreen = () => {
   const { top, bottom } = useSafeAreaInsets();
   const { currentTrack } = useAudioPlayer();
@@ -117,7 +115,11 @@ const PlayScreen = () => {
     );
   }
 
-  const imageSource = artworkUrl ? { uri: artworkUrl } : unknownTrackImageUri;
+  const imageSource = artworkUrl ? (
+    { uri: artworkUrl }
+  ) : (
+    <View style={styles.unkownArtworkStyle} />
+  );
 
   return (
     <LinearGradient
@@ -181,6 +183,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     backgroundColor: "rgba(0,0,0,0.5)",
     paddingTop: 0,
+  },
+  unkownArtworkStyle: {
+    width: "100%",
+    aspectRatio: 1,
+    borderRadius: 12,
+    backgroundColor: "black",
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingContainer: {
     flex: 1,

@@ -84,7 +84,9 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       isMounted.current = false;
       if (progressInterval.current) clearInterval(progressInterval.current);
-      if (playbackInstance) playbackInstance.unloadAsync();
+      if (playbackInstance) {
+        playbackInstance.unloadAsync();
+      }
     };
   }, []);
 
@@ -122,13 +124,15 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!isMounted.current) return;
 
       try {
+        // Stop and unload the current playback instance if it exists
+        if (playbackInstance) {
+          await playbackInstance.stopAsync();
+          await playbackInstance.unloadAsync();
+        }
+
         if (progressInterval.current) {
           clearInterval(progressInterval.current);
           progressInterval.current = null;
-        }
-
-        if (playbackInstance) {
-          await playbackInstance.unloadAsync();
         }
 
         if (!track.uri) {
@@ -159,7 +163,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         console.error("Failed to load audio", error);
       }
     },
-    [playbackInstance],
+    [playbackInstance, handleTrackEnd],
   );
 
   const playNextTrack = useCallback(async () => {
@@ -171,7 +175,10 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     if (currentIndex < playlist.length - 1) {
       await playTrack(playlist[currentIndex + 1]);
     } else {
-      await playbackInstance?.stopAsync();
+      if (playbackInstance) {
+        await playbackInstance.stopAsync();
+        await playbackInstance.unloadAsync();
+      }
       setCurrentTrack(null);
       setIsPlaying(false);
       setPosition(0);

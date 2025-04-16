@@ -42,7 +42,7 @@ export const PlayPauseButton = ({
   );
 };
 
-export const SkipToNextButton = ({ iconSize = 40 }: PlayerButtonProps) => {
+export const SkipToNextButton = ({ iconSize = 35 }: PlayerButtonProps) => {
   const { playNextTrack } = useAudioPlayer();
   return (
     <TouchableOpacity activeOpacity={0.7} onPress={playNextTrack}>
@@ -51,7 +51,7 @@ export const SkipToNextButton = ({ iconSize = 40 }: PlayerButtonProps) => {
   );
 };
 
-export const SkipToPreviousButton = ({ iconSize = 40 }: PlayerButtonProps) => {
+export const SkipToPreviousButton = ({ iconSize = 35 }: PlayerButtonProps) => {
   const { playPreviousTrack } = useAudioPlayer();
   return (
     <TouchableOpacity activeOpacity={0.7} onPress={playPreviousTrack}>

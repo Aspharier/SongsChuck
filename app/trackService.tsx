@@ -4,33 +4,55 @@ import {
   getMetadata,
 } from "@missingcore/react-native-metadata-retriever";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { GetTracksResult, Track } from "./types";
+import { GetTracksResult, Track, CachedTrackData } from "./types";
 import {
   TRACKS_CACHE_KEY,
   CACHE_EXPIRY_DAYS,
+  MAX_CACHED_TRACKS,
   isValidAudioFile,
   getBasicTrackInfo,
 } from "./utils";
+import { decode as base64Decode, encode as base64Encode } from "base-64";
 
-const MAX_CACHED_TRACKS = 100;
+const CACHE_VERSION = 2;
+
+function artworkToCacheFormat(artworkData: string | null): string | null {
+  if (!artworkData) return null;
+  return base64Encode(artworkData);
+}
+function artworkFromCacheFormat(cachedArtwork: string | null): string | null {
+  if (!cachedArtwork) return null;
+  return base64Decode(cachedArtwork);
+}
 
 export async function loadFromCache(): Promise<GetTracksResult | null> {
   try {
     const cachedData = await AsyncStorage.getItem(TRACKS_CACHE_KEY);
     if (!cachedData) return null;
 
-    const parsedData: GetTracksResult & { cacheTimestamp?: number } =
-      JSON.parse(cachedData);
+    const parsedData: CachedTrackData = JSON.parse(cachedData);
+
+    if (parsedData.version !== CACHE_VERSION) {
+      console.log("Cache version mismatch, ignoring old cache");
+      return null;
+    }
 
     if (
-      parsedData.cacheTimestamp &&
       Date.now() - parsedData.cacheTimestamp >
-        CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+      CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
     ) {
       return null;
     }
 
-    return parsedData;
+    const tracksWithArtwork = parsedData.tracks.map((track) => ({
+      ...track,
+      artworkData: artworkFromCacheFormat(track.artworkData as string | null),
+    }));
+
+    return {
+      ...parsedData,
+      tracks: tracksWithArtwork,
+    };
   } catch (error) {
     console.warn("Failed to load from cache:", error);
     return null;
@@ -38,93 +60,71 @@ export async function loadFromCache(): Promise<GetTracksResult | null> {
 }
 
 export async function saveToCache(data: GetTracksResult): Promise<void> {
-  const tracksToCache =
-    data.tracks.length > MAX_CACHED_TRACKS
-      ? data.tracks.slice(0, MAX_CACHED_TRACKS)
-      : data.tracks;
   try {
-    const slimmedTracks = tracksToCache.map((track) => ({
-      id: track.id,
-      filename: track.filename,
-      uri: track.uri,
-      duration: track.duration,
-      title: track.title,
-      artist: track.artist,
-      albumTitle: track.albumTitle,
-      lastModified: track.lastModified,
-    }));
+    const tracksToCache = data.tracks
+      .slice(0, MAX_CACHED_TRACKS)
+      .map((track) => ({
+        ...track,
+        artworkData: artworkToCacheFormat(track.artworkData || null),
+      }));
 
-    const cacheData = {
-      duration: data.duration,
-      tracks: slimmedTracks,
-      totalTracks: data.tracks.length,
+    const cacheData: CachedTrackData = {
+      ...data,
+      tracks: tracksToCache,
       cacheTimestamp: Date.now(),
+      version: CACHE_VERSION,
     };
 
     await AsyncStorage.setItem(TRACKS_CACHE_KEY, JSON.stringify(cacheData));
   } catch (error: unknown) {
     console.warn("Failed to save to cache:", error);
+    await handleCacheStorageError(error, data);
+  }
+}
 
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "message" in error &&
-      typeof (error as any).message === "string" &&
-      (error as any).message.includes("SQLITE_FULL")
-    ) {
-      try {
-        console.log("Storage full, attempting to clear space...");
-        const keys = await AsyncStorage.getAllKeys();
-        const keysToRemove = keys.filter(
-          (key) =>
-            key !== TRACKS_CACHE_KEY &&
-            !key.includes("user_") &&
-            !key.includes("settings_"),
-        );
+async function handleCacheStorageError(
+  error: unknown,
+  data: GetTracksResult,
+): Promise<void> {
+  if (isStorageFullError(error)) {
+    console.log("Storage full, attempting to clear space...");
+    await clearNonEssentialCache();
 
-        if (keysToRemove.length > 0) {
-          console.log(
-            `Removing ${keysToRemove.length} cached items to free space`,
-          );
-          await AsyncStorage.multiRemove(keysToRemove);
+    const minimalTracks = data.tracks.slice(0, 50).map((track) => ({
+      id: track.id,
+      title: track.title || track.filename,
+      artist: track.artist,
+      uri: track.uri,
+      duration: track.duration,
+      artworkData: artworkToCacheFormat(track.artworkData || null),
+    }));
 
-          const minimalTracks = tracksToCache
-            .slice(0, 50)
-            .map((track: Track) => ({
-              id: track.id,
-              title: track.title || track.filename,
-              artist: track.artist,
-              uri: track.uri,
-            }));
-
-          const minimalCacheData = {
-            duration: data.duration,
-            tracks: minimalTracks,
-            totalTracks: data.tracks.length,
-            cacheTimestamp: Date.now(),
-          };
-
-          await AsyncStorage.setItem(
-            TRACKS_CACHE_KEY,
-            JSON.stringify(minimalCacheData),
-          );
-          console.log("Successfully saved reduced cache");
-        } else {
-          console.warn("No non-critical items to remove from cache");
-        }
-      } catch (secondError) {
-        console.error("Failed to recover storage space:", secondError);
-        try {
-          await AsyncStorage.clear();
-          console.log(
-            "Cleared all AsyncStorage due to persistent storage issues",
-          );
-        } catch (finalError) {
-          console.error("Failed to clear AsyncStorage:", finalError);
-        }
-      }
+    try {
+      await AsyncStorage.setItem(
+        TRACKS_CACHE_KEY,
+        JSON.stringify({
+          duration: data.duration,
+          tracks: minimalTracks,
+          totalTracks: data.tracks.length,
+          cacheTimestamp: Date.now(),
+          version: CACHE_VERSION,
+        }),
+      );
+      console.log("Successfully saved reduced cache");
+    } catch (secondError) {
+      console.error("Failed to save reduced cache:", secondError);
     }
   }
+}
+
+function isStorageFullError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as any).message === "string" &&
+    (error as any).message.includes("SQLITE_FULL")
+  );
 }
 
 export async function getTracks(): Promise<GetTracksResult> {
@@ -132,7 +132,9 @@ export async function getTracks(): Promise<GetTracksResult> {
 
   const cachedData = await loadFromCache();
   if (cachedData) {
-    console.log("Using cached tracks data");
+    console.log(
+      `Using cached tracks data (${cachedData.tracks.length} tracks)`,
+    );
     return cachedData;
   }
 
@@ -165,8 +167,10 @@ export async function getTracks(): Promise<GetTracksResult> {
 
     const tracks = await Promise.all(
       audioFiles.map(async (asset) => {
+        const basicInfo = getBasicTrackInfo(asset);
+
         if (!isValidAudioFile(asset.uri)) {
-          return getBasicTrackInfo(asset);
+          return basicInfo;
         }
 
         try {
@@ -175,18 +179,15 @@ export async function getTracks(): Promise<GetTracksResult> {
             MetadataPresets.standardArtwork,
           );
           return {
-            ...getBasicTrackInfo(asset),
-            title:
-              metadata.title ||
-              asset.filename?.replace(/\.[^/.]+$/, "") ||
-              "Unknown",
-            artist: metadata.artist || "Unknown Artist",
+            ...basicInfo,
+            title: metadata.title || basicInfo.title,
+            artist: metadata.artist || basicInfo.artist,
             albumTitle: metadata.albumTitle || null,
             artworkData: metadata.artworkData || null,
           };
         } catch (error) {
           console.warn(`Metadata error for ${asset.filename}:`, error);
-          return getBasicTrackInfo(asset);
+          return basicInfo;
         }
       }),
     );
@@ -199,6 +200,7 @@ export async function getTracks(): Promise<GetTracksResult> {
     const result: GetTracksResult = {
       duration: ((performance.now() - start) / 1000).toFixed(4),
       tracks: uniqueTracks,
+      totalTracks: uniqueTracks.length,
     };
 
     await saveToCache(result);
@@ -220,11 +222,29 @@ export async function clearTrackCache(): Promise<void> {
   }
 }
 
+export async function clearNonEssentialCache(): Promise<void> {
+  try {
+    const keys = await AsyncStorage.getAllKeys();
+    const nonCriticalKeys = keys.filter(
+      (key) =>
+        !key.includes("user_") &&
+        !key.includes("settings_") &&
+        key !== TRACKS_CACHE_KEY,
+    );
+
+    if (nonCriticalKeys.length > 0) {
+      await AsyncStorage.multiRemove(nonCriticalKeys);
+      console.log(`Removed ${nonCriticalKeys.length} non-critical cache items`);
+    }
+  } catch (error) {
+    console.warn("Non-essential cache cleanup failed:", error);
+  }
+}
+
 export async function clearAllCache(): Promise<void> {
   try {
     await AsyncStorage.clear();
     console.log("All app cache cleared successfully");
-    return Promise.resolve();
   } catch (error) {
     console.error("Error clearing all cache:", error);
     throw error;
@@ -234,23 +254,9 @@ export async function clearAllCache(): Promise<void> {
 export async function checkAndCleanupStorage(): Promise<void> {
   try {
     const keys = await AsyncStorage.getAllKeys();
-
     if (keys.length > 20) {
       console.log("Storage contains many items, performing preventive cleanup");
-
-      const nonCriticalKeys = keys.filter(
-        (key) =>
-          !key.includes("user_") &&
-          !key.includes("settings_") &&
-          key !== TRACKS_CACHE_KEY,
-      );
-
-      if (nonCriticalKeys.length > 0) {
-        await AsyncStorage.multiRemove(nonCriticalKeys);
-        console.log(
-          `Removed ${nonCriticalKeys.length} non-critical cache items`,
-        );
-      }
+      await clearNonEssentialCache();
     }
   } catch (error) {
     console.warn("Storage check failed:", error);
