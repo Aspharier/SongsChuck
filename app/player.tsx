@@ -27,6 +27,8 @@ import { usePlayerBackground } from "./usePlayerBackground";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 
+const unknownArtworkImage = require("../assets/images/sample3.png");
+
 const PlayScreen = () => {
   const { top, bottom } = useSafeAreaInsets();
   const { currentTrack } = useAudioPlayer();
@@ -115,18 +117,14 @@ const PlayScreen = () => {
     );
   }
 
-  const imageSource = artworkUrl ? (
-    { uri: artworkUrl }
-  ) : (
-    <View style={styles.unkownArtworkStyle} />
-  );
+  const imageSource = artworkUrl ? { uri: artworkUrl } : unknownArtworkImage;
 
   return (
     <LinearGradient
       style={{ flex: 1 }}
       colors={[imageColors.background, imageColors.primary]}
     >
-      <StatusBar hidden={true} />
+      <StatusBar hidden translucent backgroundColor="transparent" />
       <GestureDetector gesture={panGesture}>
         <Animated.View style={[styles.container, animatedContainerStyle]}>
           <View
@@ -183,14 +181,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     backgroundColor: "rgba(0,0,0,0.5)",
     paddingTop: 0,
-  },
-  unkownArtworkStyle: {
-    width: "100%",
-    aspectRatio: 1,
-    borderRadius: 12,
-    backgroundColor: "black",
-    justifyContent: "center",
-    alignItems: "center",
   },
   loadingContainer: {
     flex: 1,

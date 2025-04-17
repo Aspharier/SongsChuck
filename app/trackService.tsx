@@ -7,7 +7,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GetTracksResult, Track, CachedTrackData } from "./types";
 import {
   TRACKS_CACHE_KEY,
-  CACHE_EXPIRY_DAYS,
   MAX_CACHED_TRACKS,
   isValidAudioFile,
   getBasicTrackInfo,
@@ -20,6 +19,7 @@ function artworkToCacheFormat(artworkData: string | null): string | null {
   if (!artworkData) return null;
   return base64Encode(artworkData);
 }
+
 function artworkFromCacheFormat(cachedArtwork: string | null): string | null {
   if (!cachedArtwork) return null;
   return base64Decode(cachedArtwork);
@@ -37,10 +37,8 @@ export async function loadFromCache(): Promise<GetTracksResult | null> {
       return null;
     }
 
-    if (
-      Date.now() - parsedData.cacheTimestamp >
-      CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
-    ) {
+    if (!(await validateCache(parsedData))) {
+      console.log("Cache validation failed, ignoring cache");
       return null;
     }
 
@@ -56,6 +54,22 @@ export async function loadFromCache(): Promise<GetTracksResult | null> {
   } catch (error) {
     console.warn("Failed to load from cache:", error);
     return null;
+  }
+}
+
+async function validateCache(cachedData: GetTracksResult): Promise<boolean> {
+  try {
+    const sampleTracks = cachedData.tracks.slice(0, 5);
+    const exists = await Promise.all(
+      sampleTracks.map((track) =>
+        MediaLibrary.getAssetInfoAsync(track.id)
+          .then(() => true)
+          .catch(() => false),
+      ),
+    );
+    return exists.every(Boolean);
+  } catch {
+    return false;
   }
 }
 
@@ -127,21 +141,26 @@ function isStorageFullError(error: unknown): boolean {
   );
 }
 
-export async function getTracks(): Promise<GetTracksResult> {
+export async function getTracks(
+  forceRefresh = false,
+): Promise<GetTracksResult> {
   const start = performance.now();
 
-  const cachedData = await loadFromCache();
-  if (cachedData) {
-    console.log(
-      `Using cached tracks data (${cachedData.tracks.length} tracks)`,
-    );
-    return cachedData;
+  if (!forceRefresh) {
+    const cachedData = await loadFromCache();
+    if (cachedData) {
+      console.log(
+        `Using cached tracks data (${cachedData.tracks.length} tracks)`,
+      );
+      return cachedData;
+    }
   }
 
   try {
     const { granted } = await MediaLibrary.requestPermissionsAsync();
     if (!granted) throw new Error("Media library permission not granted");
 
+    console.log("Fetching tracks from media library...");
     const { totalCount } = await MediaLibrary.getAssetsAsync({
       mediaType: "audio",
       first: 0,
@@ -203,13 +222,18 @@ export async function getTracks(): Promise<GetTracksResult> {
       totalTracks: uniqueTracks.length,
     };
 
-    await saveToCache(result);
+    saveToCache(result).catch((e) => console.warn("Cache save failed:", e));
 
     return result;
   } catch (error) {
     console.error("Error in getTracks:", error);
     throw error;
   }
+}
+
+export async function refreshTracks(): Promise<GetTracksResult> {
+  await clearTrackCache();
+  return getTracks(true);
 }
 
 export async function clearTrackCache(): Promise<void> {
@@ -260,5 +284,20 @@ export async function checkAndCleanupStorage(): Promise<void> {
     }
   } catch (error) {
     console.warn("Storage check failed:", error);
+  }
+}
+
+export async function getTrackById(id: string): Promise<Track | undefined> {
+  try {
+    const cachedData = await loadFromCache();
+    if (cachedData) {
+      return cachedData.tracks.find((track) => track.id === id);
+    }
+
+    const { tracks } = await getTracks();
+    return tracks.find((track) => track.id === id);
+  } catch (error) {
+    console.warn("Error getting track by ID:", error);
+    return undefined;
   }
 }

@@ -60,6 +60,11 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const isMounted = useRef(true);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
 
+  type PlayTrackType = (track: Track) => Promise<void>;
+  type PlayNextTrackType = () => Promise<void>;
+  type SeekToType = (position: number) => Promise<void>;
+  type HandleTrackEndType = () => Promise<void>;
+
   const updateProgress = useCallback(async () => {
     if (!playbackInstance) return;
 
@@ -105,7 +110,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, [isPlaying, updateProgress]);
 
-  const seekTo = useCallback(
+  const seekTo: SeekToType = useCallback(
     async (position: number) => {
       if (!playbackInstance) return;
 
@@ -119,12 +124,36 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     [playbackInstance],
   );
 
-  const playTrack = useCallback(
+  const playTrackRef = useRef<PlayTrackType | null>(null);
+  const playNextTrackRef = useRef<PlayNextTrackType | null>(null);
+
+  const handleTrackEnd: HandleTrackEndType = useCallback(async () => {
+    if (repeatMode === RepeatMode.Track && currentTrack) {
+      await seekTo(0);
+      await playbackInstance?.playAsync();
+    } else if (repeatMode === RepeatMode.Queue) {
+      const currentIndex = playlist.findIndex((t) => t.id === currentTrack?.id);
+      if (currentIndex === playlist.length - 1) {
+        if (playTrackRef.current && playlist.length > 0) {
+          await playTrackRef.current(playlist[0]);
+        }
+      } else {
+        if (playNextTrackRef.current) {
+          await playNextTrackRef.current();
+        }
+      }
+    } else {
+      if (playNextTrackRef.current) {
+        await playNextTrackRef.current();
+      }
+    }
+  }, [currentTrack, playlist, repeatMode, seekTo, playbackInstance]);
+
+  const playTrack: PlayTrackType = useCallback(
     async (track: Track) => {
       if (!isMounted.current) return;
 
       try {
-        // Stop and unload the current playback instance if it exists
         if (playbackInstance) {
           await playbackInstance.stopAsync();
           await playbackInstance.unloadAsync();
@@ -144,7 +173,11 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
           { uri: track.uri },
           { shouldPlay: true },
           (status) => {
-            if (status.isLoaded && status.didJustFinish) {
+            if (
+              "isLoaded" in status &&
+              status.isLoaded &&
+              status.didJustFinish
+            ) {
               handleTrackEnd();
             }
           },
@@ -166,7 +199,11 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     [playbackInstance, handleTrackEnd],
   );
 
-  const playNextTrack = useCallback(async () => {
+  useEffect(() => {
+    playTrackRef.current = playTrack;
+  }, [playTrack]);
+
+  const playNextTrack: PlayNextTrackType = useCallback(async () => {
     if (!currentTrack || playlist.length === 0) return;
 
     const currentIndex = playlist.findIndex(
@@ -185,29 +222,9 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [currentTrack, playlist, playTrack, playbackInstance]);
 
-  const handleTrackEnd = useCallback(async () => {
-    if (repeatMode === RepeatMode.Track && currentTrack) {
-      await seekTo(0);
-      await playbackInstance?.playAsync();
-    } else if (repeatMode === RepeatMode.Queue) {
-      const currentIndex = playlist.findIndex((t) => t.id === currentTrack?.id);
-      if (currentIndex === playlist.length - 1) {
-        await playTrack(playlist[0]);
-      } else {
-        await playNextTrack();
-      }
-    } else {
-      await playNextTrack();
-    }
-  }, [
-    currentTrack,
-    playlist,
-    repeatMode,
-    playTrack,
-    playNextTrack,
-    seekTo,
-    playbackInstance,
-  ]);
+  useEffect(() => {
+    playNextTrackRef.current = playNextTrack;
+  }, [playNextTrack]);
 
   const pauseTrack = useCallback(async () => {
     if (!playbackInstance) return;

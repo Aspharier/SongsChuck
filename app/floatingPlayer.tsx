@@ -5,7 +5,6 @@ import { useAudioPlayer } from "./audioProvider";
 import { FontAwesome6 } from "@expo/vector-icons";
 import { MovingText } from "./movingText";
 import { useRouter } from "expo-router";
-const unknownTrackImageUri = require("../assets/images/sample3.png");
 
 export const PlayPauseButton = ({ iconSize = 24 }: { iconSize?: number }) => {
   const { isPlaying, pauseTrack } = useAudioPlayer();
@@ -45,7 +44,9 @@ export const FloatingPlayer = ({ style }: ViewProps) => {
     <TouchableOpacity onPress={handlePress} style={[styles.container, style]}>
       <Image
         source={{
-          uri: currentTrack.artworkData ?? unknownTrackImageUri,
+          uri: currentTrack.artworkData ?? (
+            <View style={styles.unkownArtWorkStyle} />
+          ),
         }}
         style={styles.trackArtworkImage}
       />
@@ -67,6 +68,13 @@ export const FloatingPlayer = ({ style }: ViewProps) => {
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
+    alignItems: "center",
+  },
+  unkownArtWorkStyle: {
+    backgroundColor: "black",
+    aspectRatio: 1,
+    borderRadius: 12,
+    justifyContent: "center",
     alignItems: "center",
   },
   trackArtworkImage: {

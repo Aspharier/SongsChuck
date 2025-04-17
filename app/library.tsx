@@ -11,6 +11,10 @@ import TrackItem from "./trackItem";
 import { useAudioPlayer } from "./audioProvider";
 import { FloatingPlayer } from "./floatingPlayer";
 
+interface TracksData {
+  tracks: Track[];
+}
+
 const Library: React.FC = () => {
   const ref = useRef<FlashList<Track>>(null);
   const { hasPermissions } = useMediaLibraryPermissions();
@@ -19,7 +23,7 @@ const Library: React.FC = () => {
 
   const { isPending, error, data, refetch } = useQuery({
     queryKey: ["tracks"],
-    queryFn: getTracks,
+    queryFn: async (): Promise<TracksData> => getTracks(),
     enabled: hasPermissions,
   });
 
@@ -27,9 +31,9 @@ const Library: React.FC = () => {
     if (data?.tracks) {
       setPlaylist(data.tracks);
     }
-  }, [data]);
+  }, [data, setPlaylist]);
 
-  const handleRefresh = async () => {
+  const handleRefresh = async (): Promise<void> => {
     setRefreshing(true);
     try {
       await clearTrackCache();
@@ -41,7 +45,7 @@ const Library: React.FC = () => {
     }
   };
 
-  const handleTrackSelect = (track: Track) => {
+  const handleTrackSelect = (track: Track): void => {
     playTrack(track);
   };
 
